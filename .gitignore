@@ -2,4 +2,11 @@
 
 # Bases de données locales et clés privées
 *.json
-*.txt
+*.txt# Rust
+target/
+Cargo.lock
+
+# 🏴‍☠️ Base de données de la Blockchain
+chain_*.json
+*.log
+.env
