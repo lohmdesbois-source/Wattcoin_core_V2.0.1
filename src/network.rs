@@ -174,6 +174,7 @@ pub async fn broadcast_block(target_port: &str, my_port: &str, block: Block) {
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::NewBlock { block, sender_port: my_port.to_string() };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
+        let _ = stream.shutdown().await; // 🔌 FIX : On raccroche proprement !
     }
 }
 
@@ -182,6 +183,7 @@ pub async fn send_handshake(target_port: &str, my_port: &str, genesis_hash: Stri
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::Handshake { genesis_hash, current_height, sender_port: my_port.to_string() };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
+        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
 
@@ -190,24 +192,25 @@ pub async fn send_sync_response(target_port: &str, blocks: Vec<Block>) {
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::SyncResponse { blocks };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
+        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
-
-
 
 pub async fn broadcast_transaction(target_port: &str, tx: Transaction) {
     let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::BroadcastTransaction { tx };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
+        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
 
-// 🌊 NOUVEAU : Diffuser un ordre DEX au voisin
+// 🌊 Diffuser un ordre DEX au voisin
 pub async fn broadcast_order(target_port: &str, order: Order) {
     let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::BroadcastOrder { order };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
+        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
