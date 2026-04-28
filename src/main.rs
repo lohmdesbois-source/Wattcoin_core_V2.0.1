@@ -14,15 +14,13 @@ use api::SharedPool; // 🌊 Import de la piscine
 
 pub type SharedMempool = Arc<Mutex<Vec<Transaction>>>;
 
-
-
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 3 {
-        eprintln!("🛑 Usage Mineur : cargo run <PORT> <MINER_ADDRESS> [PEER_PORT]");
-        eprintln!("🛡️  Usage Relais : cargo run <PORT> --relay [PEER_PORT]");
+        eprintln!("🛑 Usage Mineur : cargo run <PORT> <MINER_ADDRESS> [PEER_IP:PORT]");
+        eprintln!("🛡️  Usage Relais : cargo run <PORT> --relay [PEER_IP:PORT]");
         return;
     }
 
@@ -36,8 +34,8 @@ async fn main() {
     // Si on est en relais, on met une fausse adresse. Sinon, on prend la vraie adresse fournie.
     let miner_address = if is_relay_mode { String::from("RELAY_NODE_NO_MINING") } else { arg2 };
     
-    // Le port voisin est optionnel (3ème argument)
-    let peer_port = args.get(3).cloned();
+    // 🌍 Le voisin est maintenant une adresse complète (ex: 80.78.26.243:8000)
+    let peer_addr = args.get(3).cloned();
 
     println!("🔥 DÉMARRAGE DU NŒUD CYPHERPUNK...");
     
@@ -52,32 +50,31 @@ async fn main() {
     let genesis_hash = shared_chain.lock().unwrap().chain[0].header.hash.clone();
     let current_height = shared_chain.lock().unwrap().chain.len() as u64;
 
-    // 🌊 0. Création du Dark Pool DEX (À METTRE AVANT LE RÉSEAU P2P !)
+    // 🌊 0. Création du Dark Pool DEX
     let dex_pool: SharedPool = Arc::new(Mutex::new(Vec::new()));
 
     // 🌐 1. DÉMARRAGE DU RÉSEAU P2P
     let p2p_chain = Arc::clone(&shared_chain);
     let p2p_mempool = Arc::clone(&mempool);
-    let p2p_dex_pool = Arc::clone(&dex_pool); // Maintenant dex_pool existe bien !
+    let p2p_dex_pool = Arc::clone(&dex_pool); 
     let port_clone = port.clone();
     tokio::spawn(async move { network::start_p2p_server(&port_clone, p2p_chain, p2p_mempool, p2p_dex_pool).await; });
-	
-	
-	// 🔌 2. DÉMARRAGE DE L'API REST
+    
+    // 🔌 2. DÉMARRAGE DE L'API REST
     let api_chain = Arc::clone(&shared_chain);
     let api_mempool = Arc::clone(&mempool);
-    let peer_for_api = peer_port.clone(); 
+    let peer_for_api = peer_addr.clone(); 
     tokio::spawn(async move { api::start_api_server(api_port, api_mempool, api_chain, peer_for_api, dex_pool).await; });
 
     // 🤝 3. POIGNÉE DE MAIN P2P
-    if let Some(target_port) = &peer_port {
-        println!("🤝 Appel du nœud voisin sur le port {}...", target_port);
-        let target_clone = target_port.clone();
+    if let Some(target_addr) = &peer_addr {
+        println!("🤝 Appel du nœud voisin à l'adresse {}...", target_addr);
+        let target_clone = target_addr.clone();
         let genesis_clone = genesis_hash.clone();
-        let my_port = port.clone();
+        let my_port_str = port.clone();
         
         tokio::spawn(async move {
-            network::send_handshake(&target_clone, &my_port, genesis_clone, current_height).await;
+            network::send_handshake(&target_clone, &my_port_str, genesis_clone, current_height).await;
         });
     }
 
@@ -85,21 +82,18 @@ async fn main() {
     // L'AIGUILLAGE : RELAIS OU MINEUR ?
     // ---------------------------------------------------------
     if is_relay_mode {
-        // 🛡️ MODE RELAIS FURTIF (1% CPU)
+        // 🛡️ MODE RELAIS FURTIF
         println!("📡 Le Nœud Relais est en ligne et écoute le réseau...");
         
         let db_file_relay = format!("chain_{}.json", port);
         
         loop {
-            // Le programme s'endort 10 secondes...
             tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-            
-            // 💾 AUTO-SAVE : Toutes les 10 secondes, le relais grave sa mémoire sur le disque !
             let chain = shared_chain.lock().unwrap();
             chain.save_to_disk(&db_file_relay);
         }
     } else {
-        // ⛏️ MODE MINEUR CLASSIQUE (100% CPU)
+        // ⛏️ MODE MINEUR CLASSIQUE
         println!("\n⚙️  Initialisation du moteur RandomX...");
         let start_rx = std::time::Instant::now(); 
         
@@ -157,19 +151,14 @@ async fn main() {
                 let mut chain = shared_chain.lock().unwrap();
                 if chain.chain.len() as u64 == candidate_block.header.index {
                     
-                    // 1. Formatage de la date (Grâce à chrono)
                     let date_str = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-                    
-                    // 2. Statistiques des transactions
                     let nb_tx = candidate_block.transactions.len();
                     let mut total_fees = 0;
                     
-                    // On additionne les frais (on ignore la 1ère TX qui est la tienne : le Coinbase)
                     for tx in candidate_block.transactions.iter().skip(1) {
-                        total_fees += tx.fee; // On additionne les Flames !
+                        total_fees += tx.fee; 
                     }
 
-                    // 3. Le magnifique affichage ASCII
                     println!("\n====================================================================");
                     println!("🎉 EURÊKA ! NOUVEAU BLOC FORGÉ PAR LE MINEUR !");
                     println!("====================================================================");
@@ -185,8 +174,9 @@ async fn main() {
                     chain.update_target(); 
                     chain.save_to_disk(&db_file);
 
-                    if let Some(target_port) = &peer_port {
-                        let target_clone = target_port.clone();
+                    // 🌐 DIFFUSION DU BLOC VIA L'ADRESSE COMPLÈTE
+                    if let Some(target_addr) = &peer_addr {
+                        let target_clone = target_addr.clone();
                         let block_clone = candidate_block.clone();
                         let my_port_clone = port.clone(); 
                         tokio::spawn(async move {
