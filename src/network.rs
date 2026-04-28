@@ -38,10 +38,13 @@ pub async fn start_p2p_server(port: &str, blockchain: Arc<Mutex<Blockchain>>, me
         let my_port_clone = my_port.clone();
 
         tokio::spawn(async move {
-            let mut buffer = vec![0; 1024 * 1024 * 10]; // 10 Mo
-            if let Ok(n) = socket.read(&mut buffer).await {
+            // 💡 FIX : On utilise un Vec dynamique et read_to_end !
+            let mut buffer = Vec::new();
+            
+            // Le serveur attend d'avoir reçu TOUS les morceaux du colis TCP
+            if let Ok(n) = socket.read_to_end(&mut buffer).await {
                 if n > 0 {
-                    let message_str = String::from_utf8_lossy(&buffer[..n]);
+                    let message_str = String::from_utf8_lossy(&buffer);
                     
                     if let Ok(message) = serde_json::from_str::<P2PMessage>(&message_str) {
                         let mut chain = blockchain_clone.lock().unwrap();
