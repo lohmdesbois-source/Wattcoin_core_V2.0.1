@@ -38,13 +38,10 @@ pub async fn start_p2p_server(port: &str, blockchain: Arc<Mutex<Blockchain>>, me
         let my_port_clone = my_port.clone();
 
         tokio::spawn(async move {
-            // 💡 FIX : On utilise un Vec dynamique et read_to_end !
-            let mut buffer = Vec::new();
-            
-            // Le serveur attend d'avoir reçu TOUS les morceaux du colis TCP
-            if let Ok(n) = socket.read_to_end(&mut buffer).await {
+            let mut buffer = vec![0; 1024 * 1024 * 10]; // 10 Mo
+            if let Ok(n) = socket.read(&mut buffer).await {
                 if n > 0 {
-                    let message_str = String::from_utf8_lossy(&buffer);
+                    let message_str = String::from_utf8_lossy(&buffer[..n]);
                     
                     if let Ok(message) = serde_json::from_str::<P2PMessage>(&message_str) {
                         let mut chain = blockchain_clone.lock().unwrap();
@@ -174,7 +171,6 @@ pub async fn broadcast_block(target_port: &str, my_port: &str, block: Block) {
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::NewBlock { block, sender_port: my_port.to_string() };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
-        let _ = stream.shutdown().await; // 🔌 FIX : On raccroche proprement !
     }
 }
 
@@ -183,7 +179,6 @@ pub async fn send_handshake(target_port: &str, my_port: &str, genesis_hash: Stri
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::Handshake { genesis_hash, current_height, sender_port: my_port.to_string() };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
-        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
 
@@ -192,25 +187,24 @@ pub async fn send_sync_response(target_port: &str, blocks: Vec<Block>) {
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::SyncResponse { blocks };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
-        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
+
+
 
 pub async fn broadcast_transaction(target_port: &str, tx: Transaction) {
     let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::BroadcastTransaction { tx };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
-        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
 
-// 🌊 Diffuser un ordre DEX au voisin
+// 🌊 NOUVEAU : Diffuser un ordre DEX au voisin
 pub async fn broadcast_order(target_port: &str, order: Order) {
     let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::BroadcastOrder { order };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
-        let _ = stream.shutdown().await; // 🔌 FIX
     }
 }
