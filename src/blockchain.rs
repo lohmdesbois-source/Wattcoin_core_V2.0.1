@@ -14,7 +14,7 @@ const INITIAL_REWARD: f64 = 50.0 * (FLAME as f64);    // On commence à 50 Watts
 const DECAY_FACTOR: f64 = 0.999999;  // Diminution très lente par bloc (Émission douce)
 const TAIL_EMISSION: u64 = 1 * FLAME; // Minimum vital perpétuel pour les mineurs
 // 💥 LA DIFFICULTÉ DE DÉPART (Plus c'est grand, plus c'est dur)
-const START_DIFFICULTY_SHIFT: u32 = 16;
+const START_DIFFICULTY_SHIFT: u32 = 10;
 
 pub struct Blockchain {
     pub chain: Vec<Block>,
