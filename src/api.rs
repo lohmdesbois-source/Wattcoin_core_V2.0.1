@@ -286,5 +286,6 @@ pub async fn start_api_server(port: u16, mempool: Arc<Mutex<Vec<Transaction>>>, 
     println!("📡 API Serveur active sur le port {}...", port);
     println!("🔍 Routes disponibles : GET /info | GET /all_transactions | POST /send_tx ...");
     
-    warp::serve(routes).run(([127, 0, 0, 1], port)).await;
+    // 💡 FIX : On remplace [127, 0, 0, 1] par [0, 0, 0, 0] pour autoriser les connexions depuis Internet !
+    warp::serve(routes).run(([0, 0, 0, 0], port)).await;
 }

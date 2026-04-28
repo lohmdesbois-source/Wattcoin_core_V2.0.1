@@ -22,9 +22,9 @@ pub enum P2PMessage {
     BroadcastOrder { order: Order },
 }
 
-// 💡 MODIFIÉ : On ajoute le dex_pool dans les arguments !
+// On écoute sur 0.0.0.0 (Toutes les interfaces de la machine)
 pub async fn start_p2p_server(port: &str, blockchain: Arc<Mutex<Blockchain>>, mempool: Arc<Mutex<Vec<Transaction>>>, dex_pool: SharedPool) {
-    let address = format!("127.0.0.1:{}", port);
+    let address = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&address).await.unwrap();
     println!("📡 Serveur P2P à l'écoute sur TCP/{}...", port);
     
@@ -167,7 +167,7 @@ pub async fn start_p2p_server(port: &str, blockchain: Arc<Mutex<Blockchain>>, me
 // --- FONCTIONS RÉSEAU D'ENVOI ---
 
 pub async fn broadcast_block(target_port: &str, my_port: &str, block: Block) {
-    let address = format!("127.0.0.1:{}", target_port);
+    let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::NewBlock { block, sender_port: my_port.to_string() };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
@@ -175,7 +175,7 @@ pub async fn broadcast_block(target_port: &str, my_port: &str, block: Block) {
 }
 
 pub async fn send_handshake(target_port: &str, my_port: &str, genesis_hash: String, current_height: u64) {
-    let address = format!("127.0.0.1:{}", target_port);
+    let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::Handshake { genesis_hash, current_height, sender_port: my_port.to_string() };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
@@ -183,7 +183,7 @@ pub async fn send_handshake(target_port: &str, my_port: &str, genesis_hash: Stri
 }
 
 pub async fn send_sync_response(target_port: &str, blocks: Vec<Block>) {
-    let address = format!("127.0.0.1:{}", target_port);
+    let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::SyncResponse { blocks };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
@@ -193,7 +193,7 @@ pub async fn send_sync_response(target_port: &str, blocks: Vec<Block>) {
 
 
 pub async fn broadcast_transaction(target_port: &str, tx: Transaction) {
-    let address = format!("127.0.0.1:{}", target_port);
+    let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::BroadcastTransaction { tx };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
@@ -202,7 +202,7 @@ pub async fn broadcast_transaction(target_port: &str, tx: Transaction) {
 
 // 🌊 NOUVEAU : Diffuser un ordre DEX au voisin
 pub async fn broadcast_order(target_port: &str, order: Order) {
-    let address = format!("127.0.0.1:{}", target_port);
+    let address = format!("80.78.26.243:{}", target_port);
     if let Ok(mut stream) = TcpStream::connect(&address).await {
         let envelope = P2PMessage::BroadcastOrder { order };
         let _ = stream.write_all(serde_json::to_string(&envelope).unwrap().as_bytes()).await;
