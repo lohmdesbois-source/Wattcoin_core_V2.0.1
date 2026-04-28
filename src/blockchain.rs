@@ -13,6 +13,8 @@ const EXPECTED_BLOCK_TIME: u64 = 120; // 🔥 On passe à 600 secondes (10 minut
 const INITIAL_REWARD: f64 = 50.0 * (FLAME as f64);    // On commence à 50 Watts / 50 Milliards de Flame
 const DECAY_FACTOR: f64 = 0.999999;  // Diminution très lente par bloc (Émission douce)
 const TAIL_EMISSION: u64 = 1 * FLAME; // Minimum vital perpétuel pour les mineurs
+// 💥 LA DIFFICULTÉ DE DÉPART (Plus c'est grand, plus c'est dur)
+const START_DIFFICULTY_SHIFT: u32 = 16;
 
 pub struct Blockchain {
     pub chain: Vec<Block>,
@@ -23,7 +25,7 @@ pub struct Blockchain {
 impl Blockchain {
     pub fn new() -> Self {
         let max_target = BigUint::from_bytes_be(&[0xFF; 32]);
-        let initial_target = &max_target >> 8u32;
+        let initial_target = &max_target >> START_DIFFICULTY_SHIFT;
 
         let mut blockchain = Blockchain {
             chain: Vec::new(),
@@ -99,7 +101,7 @@ impl Blockchain {
         if time_taken <= 0 { time_taken = 1; } 
         
         let max_target = BigUint::from_bytes_be(&[0xFF; 32]);
-        let initial_target = &max_target >> 8u32; 
+        let initial_target = &max_target >> START_DIFFICULTY_SHIFT; 
 
         // 🎯 L'affichage de la difficulté (La cible est DÉJÀ à jour grâce à update_target !)
         let difficulty_x100 = (&initial_target * 100u64) / &self.target;
@@ -338,7 +340,7 @@ impl Blockchain {
 	/// 🧠 Recalcule toute la difficulté depuis le Genesis Block
     pub fn recalculate_target_from_scratch(&mut self) {
         let max_target = num_bigint::BigUint::from_bytes_be(&[0xFF; 32]);
-        let mut current_target = &max_target >> 8u32; // On part de la Genèse
+        let mut current_target = &max_target >> START_DIFFICULTY_SHIFT; // On part de la Genèse
 
         // On rejoue le film pour chaque bloc pour trouver la difficulté ACTUELLE
         for i in 2..=self.chain.len() {
@@ -362,7 +364,7 @@ impl Blockchain {
 	/// 🏋️‍♂️ Calcule le "Poids" total (Chain Work) d'une chaîne
     pub fn calculate_total_work(chain_to_measure: &[Block]) -> BigUint {
         let max_target = num_bigint::BigUint::from_bytes_be(&[0xFF; 32]);
-        let mut current_target = &max_target >> 8u32;
+        let mut current_target = &max_target >> START_DIFFICULTY_SHIFT;
         let mut total_work = num_bigint::BigUint::from(0u32);
 
         for i in 0..chain_to_measure.len() {
